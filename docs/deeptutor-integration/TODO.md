@@ -4,13 +4,31 @@
 
 ---
 
-## 阶段一：方案A环境搭建与本体编译启动（当前阶段 🎯）
+## 阶段一：方案A环境搭建与本体编译启动（已完成 ✅）
 
-- [ ] **Task 1.1: 准备 JDK 25 与 Maven 构建环境**
-  - 为本地提供/下载免安装版 OpenJDK 25 与 Maven，或在 VS Code 任务中配置对应环境变量。
-- [ ] **Task 1.2: 配置 VS Code 编译与启动 Task**
-  - 在 `.vscode/tasks.json` 中配置 `build: shimeji` 与 `run: shimeji`。
-  - 编译打包 `mascot-1.0.22.jar`，启动并验证原生窗口物理攀爬与退出清理。
+- [x] **Task 1.1: 准备 JDK 25 与 Maven 构建环境**
+  - 通过 `winget install Microsoft.OpenJDK.25` 全局安装 Microsoft OpenJDK **25.0.4.1**（安装至 `C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot`）。
+  - 全局安装 Apache Maven **3.9.9**（`C:\Users\linmeng\AppData\Local\Programs\apache-maven-3.9.9`）。
+  - 已写入用户级环境变量：`JAVA_HOME` 指向 JDK 25，`Path` 追加 `%JAVA_HOME%\bin` 与 Maven `bin`。
+- [x] **Task 1.2: 配置构建与运行方式**
+  - 新增 `scripts/build.ps1`（自动定位 JDK 25 + Maven，执行 `mvn package -DskipTests`，随后把发布 zip 解压到 `dist/`）。
+  - `.vscode/tasks.json` 只保留 `build: shimeji`。
+  - **构建产物**：`target/Shimeji-ee.jar`、`target/Shimeji-ee.exe`、`target/Shimeji-ee_1.0.22.zip`，以及可直接运行的 `dist/`。
+  - **验证结果**：`mvn package` BUILD SUCCESS；`dist/Shimeji-ee.exe` 启动后 `javaw.exe` 稳定驻留，日志确认 mascot 创建、`Fall → WalkLeftAndSit` 行为链正常。
+
+### ⚠️ 运行方式的关键坑（务必记住）
+
+| 路径 | 能否直接跑 | 原因 |
+| :--- | :--- | :--- |
+| `dist\Shimeji-ee.exe` | ✅ **可以，双击即可** | `dist/` 里同时有 `conf/`、`img/`、`lib/`、`Shimeji-ee.jar` |
+| `target\Shimeji-ee.exe` | ❌ **不行**（进程秒退、退出码 0、无任何提示） | launch4j 启动器把工作目录固定为 exe 所在目录，而 `target/` 里没有 `conf/` 与 `img/`；程序按相对路径读 `conf\actions.xml`、`img\Shimeji\` |
+| `java -jar target\Shimeji-ee.jar`（在仓库根目录） | ✅ 可以 | 仓库根目录有 `conf/` 与 `img/`，且 jar 的 `Class-Path` 相对 `target/lib/` 能解析 |
+
+因此：
+- **日常使用**：双击 `dist\Shimeji-ee.exe`。
+- **改完代码**：先跑 `build: shimeji`（会重新生成并解压 `dist/`），再双击 `dist\Shimeji-ee.exe`。
+- 运行中的 `dist\` 被 exe 占用时构建会跳过解压并给出警告，需先退出桌宠。
+- 环境要求：`JAVA_HOME` 必须指向 JDK 25（系统里还有旧 Java 8，launch4j 的 `minVersion` 是 25）。
 
 ---
 
