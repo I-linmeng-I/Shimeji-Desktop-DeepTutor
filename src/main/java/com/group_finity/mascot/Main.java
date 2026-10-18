@@ -12,7 +12,6 @@ import com.group_finity.mascot.config.ConfigurationException;
 import com.group_finity.mascot.config.Entry;
 import com.group_finity.mascot.image.ImagePairs;
 import com.group_finity.mascot.image.ImageUtils;
-import com.group_finity.mascot.imagesetchooser.ImageSetChooser;
 import com.group_finity.mascot.platform.NativeFactory;
 import com.group_finity.mascot.sound.Sounds;
 import com.jthemedetecor.OsThemeDetector;
@@ -33,6 +32,7 @@ import java.awt.image.BufferedImage;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -42,6 +42,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.LogManager;
+import java.util.stream.Stream;
 
 /**
  * Program entry point.
@@ -318,7 +319,7 @@ public class Main {
         }
 
         // Load mascot configurations
-        configurationLoadLoop();
+        loadConfigurations();
 
         // Create the tray icon
         SwingUtilities.invokeLater(trayMenu::createTrayIcon);
@@ -355,37 +356,34 @@ public class Main {
     }
 
     /**
-     * Shows the image set chooser if there are no image sets selected, and then loads the selected image sets.
-     * If none of the selected image sets' configurations successfully load, the process repeats.
+     * Loads the configurations for the active image sets.
+     * If no image sets are active, the first image set in the image directory is used.
      */
-    private void configurationLoadLoop() {
-        do {
-            if (activeImageSets.isEmpty()) {
-                try {
-                    SwingUtilities.invokeAndWait(() -> {
-                        activeImageSets = new ImageSetChooser(frame, true).display();
-                        if (activeImageSets == null) {
-                            exit();
-                        }
-                    });
-                } catch (InterruptedException | InvocationTargetException e) {
-                    throw new RuntimeException(e);
-                }
+    private void loadConfigurations() {
+        if (activeImageSets.isEmpty()) {
+            try (Stream<Path> imageSetDirs = Files.list(IMAGE_DIRECTORY)) {
+                imageSetDirs
+                        .filter(Files::isDirectory)
+                        .map(dir -> dir.getFileName().toString())
+                        .filter(name -> !name.equalsIgnoreCase("unused") && !name.startsWith("."))
+                        .findFirst()
+                        .ifPresent(activeImageSets::add);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
-
-            // Load mascot configurations
-            for (int index = 0; index < activeImageSets.size(); index++) {
-                String imageSet = activeImageSets.get(index);
-                if (!loadConfiguration(imageSet)) {
-                    // failed to load
-                    activeImageSets.remove(imageSet);
-                    index--;
-                }
-            }
-            // Clear any items that were added to this collection during the loading sequence
-            failedConfigurations.clear();
         }
-        while (activeImageSets.isEmpty());
+
+        // Load mascot configurations
+        for (int index = 0; index < activeImageSets.size(); index++) {
+            String imageSet = activeImageSets.get(index);
+            if (!loadConfiguration(imageSet)) {
+                // failed to load
+                activeImageSets.remove(imageSet);
+                index--;
+            }
+        }
+        // Clear any items that were added to this collection during the loading sequence
+        failedConfigurations.clear();
     }
 
     /**
@@ -705,7 +703,7 @@ public class Main {
         configurations.clear();
 
         // Load mascot configurations
-        configurationLoadLoop();
+        loadConfigurations();
 
         // Create mascots
         for (String imageSet : activeImageSets) {
@@ -765,8 +763,8 @@ public class Main {
         failedConfigurations.clear();
 
         if (activeImageSets.isEmpty()) {
-            // All configurations failed to load, so prompt the user to select image sets again
-            configurationLoadLoop();
+            // All configurations failed to load, so fall back to the default image set
+            loadConfigurations();
         }
 
         manager.setExitOnLastRemoved(isExit);
