@@ -5,7 +5,7 @@ import com.group_finity.mascot.animation.Hotspot;
 import com.group_finity.mascot.behavior.Behavior;
 import com.group_finity.mascot.behavior.BehaviorExecutionException;
 import com.group_finity.mascot.behavior.UserBehavior;
-import com.group_finity.mascot.chat.InputWindow;
+import com.group_finity.mascot.chat.ChatBubble;
 import com.group_finity.mascot.config.BehaviorInstantiationException;
 import com.group_finity.mascot.config.Configuration;
 import com.group_finity.mascot.environment.Area;
@@ -442,15 +442,19 @@ public class Mascot {
         } else if (event.isControlDown() && event.getButton() == MouseEvent.BUTTON1) {
             // Ctrl+left click toggles the chat input window. It is handled here rather than in
             // mouseReleased so the mascot never starts a drag for this click.
-            if (InputWindow.isOpenFor(this)) {
-                InputWindow.closeFor(this);
+            // Without a usable DeepTutor setup there is nothing to chat with, so the click is ignored entirely
+            if (!Main.getInstance().getSettings().isDeepTutorConfigured()) {
+                return;
+            }
+            if (ChatBubble.isInputOpenFor(this)) {
+                ChatBubble.closeInputFor(this);
             } else if (!paused) {
                 openChat(event);
             }
         } else {
             // A left click closes the chat input window if it is open
-            if (event.getButton() == MouseEvent.BUTTON1 && InputWindow.isOpenFor(this)) {
-                InputWindow.closeFor(this);
+            if (event.getButton() == MouseEvent.BUTTON1 && ChatBubble.isInputOpenFor(this)) {
+                ChatBubble.closeInputFor(this);
                 return;
             }
             // Switch to drag animation when mouse is pressed
@@ -496,6 +500,11 @@ public class Mascot {
      * from the context menu
      */
     private void openChat(final MouseEvent event) {
+        // Guard against every entry point, including the context menu
+        if (!Main.getInstance().getSettings().isDeepTutorConfigured()) {
+            return;
+        }
+
         final Behavior releasedBehavior = behavior;
 
         try {
@@ -507,7 +516,7 @@ public class Mascot {
         tick();
         apply();
 
-        InputWindow.toggleNextTo(this, releasedBehavior, event);
+        ChatBubble.toggleInputNextTo(this, releasedBehavior, event);
     }
 
     /**
@@ -542,6 +551,10 @@ public class Mascot {
 
         final JMenuItem showChatInput = new JMenuItem(languageBundle.getString("ShowChatInput"));
         showChatInput.addActionListener(event -> openChat(null));
+        if (!Main.getInstance().getSettings().isDeepTutorConfigured()) {
+            showChatInput.setEnabled(false);
+            showChatInput.setToolTipText(languageBundle.getString("ConfigureDeepTutorFirst"));
+        }
 
         final JMenuItem followCursorItem = new JMenuItem(languageBundle.getString("FollowCursor"));
         followCursorItem.addActionListener(event -> manager.setBehaviorAll(Main.getInstance().getConfiguration(imageSet), UserBehavior.BEHAVIORNAME_CHASEMOUSE, imageSet));

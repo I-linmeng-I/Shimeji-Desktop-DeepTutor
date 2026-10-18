@@ -1,6 +1,6 @@
 # 藤原妹红・DeepTutor 伴学桌宠需求规格说明书 (PRD)
 
-> 版本：v2.0.0 (基于 Shimeji-Desktop 架构)  
+> 版本：v2.0.0 (基于 Shimeji-Desktop 架构)
 > 目标伙伴：藤原妹红 (`partner-e67bc7f6`)，对齐 `DeepTutor/data/partners/partner-e67bc7f6/workspace/user/workspace/SOUL.md` 与人设记忆
 
 ---
@@ -35,9 +35,6 @@
 
 * **FR-2.1 服务发现与健康检查**：
   * 启动时连接 `http://127.0.0.1:8001/api/system/status`，自动检查服务在线与伙伴配置。
-* **FR-2.2 独立会话与记忆隔离**：
-  * 携带独立的 `session_id`（如 `shimeji-pet-session-001`）调用 `/{partner_id}/chat` 与 `/{partner_id}/chat/execute-stream`。
-  * 保持多轮对话上下文，且不与 Web 浏览器的 `web-continuity` 锁发生冲突。
 
 ---
 

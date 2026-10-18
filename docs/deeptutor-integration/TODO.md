@@ -53,57 +53,93 @@
   | `deepTutorPartner` | `DeepTutorPartner` | `""` |
   | `chatWidth` | `ChatWidth` | `360` |
   | `chatFontSize` | `ChatFontSize` | `13` |
+  | `chatLightMode` | `ChatLightMode` | `false` |
 
 - `Settings.readBackendPort(Path)`：逐行读 `<目录>/data/user/settings/system.json`，正则取 `"backend_port": <n>`，读不到返回 `0`。**不要硬编码 8001**。
+- `Settings.isDeepTutorConfigured()`：目录存在 + 已选伙伴 + 端口可读，三者同时满足才允许唤出聊天框。
 - `SettingsWindow`：第 5 个页签，用 `BoxLayout(PAGE_AXIS)` + 末尾 `VerticalGlue` 贴顶排列（与「关于」页一致）。
-  - DeepTutor 目录（文本框 + 浏览）、伙伴（下拉 + 刷新）、服务端口（只读标签）、聊天框宽度、聊天字号。
+  - DeepTutor 目录（文本框 + 浏览）、伙伴（下拉 + 刷新）、服务端口（只读标签）、聊天框宽度、聊天字号、浅色模式。
   - 伙伴扫描 `data/partners/partner-*/config.yaml`，只读顶层 `name:` 行做显示名，保存的是目录名（如 `partner-e67bc7f6`），跳过 `_runtime`。
-- 新文案全部走语言包：`DeepTutor`、`DeepTutorDirectory`、`Browse`、`Partner`、`Refresh`、`BackendPort`、`ChatWidth`、`ChatFontSize`、`AttachTooltip`、`SendTooltip`、`ShowChatInput`。
+  - 「浏览」走 `chat/FileDialogs.chooseDirectory(...)`，见 Task 1.5.3。
+- 新文案全部走语言包：`DeepTutor`、`DeepTutorDirectory`、`Browse`、`Partner`、`Refresh`、`BackendPort`、`ChatWidth`、`ChatFontSize`、`ChatLightMode`、`AttachTooltip`、`SendTooltip`、`ShowChatInput`、`Close`、`PastedImage`、`ConfigureDeepTutorFirst`、`DeepTutorNotConnected`。
 
-### Task 1.5.3 聊天输入框（仅绘制与交互，未接网络）
+### Task 1.5.3 聊天框与气泡（同一套窗口，已实现）
 
-资源与皮肤：
+> **输入框和输出气泡是同一个类、同一套皮肤、同一个窗口形状**：输入时是可编辑面板，回车后原地变成只读输出气泡。
+
+资源与皮肤（按图像集各自一套）：
 
 ```
-img/Shimeji/chat/          ← 每个图像集各自一套，不能放在 img/ 根目录（会被当成图像集）
+img/Shimeji/chat/          ← 不能放在 img/ 根目录（会被当成图像集）
     chat.xml
-    input-attach.png
-    input-send.png
+    input-attach.svg
+    input-send.svg
+    input-close.svg
 ```
 
 `chat.xml` 格式：
 
 ```xml
 <Chat>
-    <Input Width="360" Height="60" CornerRadius="14" BorderWidth="1" Padding="8,10,8,10">
-        <Button Name="Attach" Image="/chat/input-attach.png" Size="18,18" Align="Left"/>
-        <Button Name="Send"   Image="/chat/input-send.png"   Size="18,18"/>
+    <Input Width="360" Height="60" CornerRadius="14" BorderWidth="2" Padding="8,10,8,10">
+        <Button Name="Attach" Image="/chat/input-attach.svg" Size="18,18" Align="Left"/>
+        <Button Name="Send"   Image="/chat/input-send.svg"   Size="18,18"/>
+        <Button Name="Close"  Image="/chat/input-close.svg"  Size="16,16"/>
     </Input>
+    <Bubble MaxWidth="340" CornerRadius="18" BorderWidth="2" Padding="10,16,10,16"
+            TailWidth="24" TailHeight="12"/>
 </Chat>
 ```
 
-- `chat/ChatSkin.java`：解析该 xml，持有宽高/圆角/边框/内边距/按钮（含 `leftAligned`）。按图像集分别缓存。
-- `chat/InputWindow.java`：`JDialog`（**不能用 `JWindow`**，它抢不到焦点）。
+- **图标一律用 SVG**（也兼容 png）。`ChatIcons` 用 `jsvg` 按 `Size` 4× 超采样渲染再缩到目标尺寸，边缘不糊；SVG 单色即可，颜色由主题覆盖。
+- 所有图标（Attach / Send / Close）统一 tint 成 `ChatTheme.icon()`（= 前景色），保证同一份 SVG 在深/浅两种模式下都清晰且颜色一致。
+- `Close` 不是画出来的 `×`，而是和另外两个按钮一样来自皮肤；皮肤里缺 `Close` 时才回退成绘制字符。
+- `<Bubble>` 可选，缺失时用 `ChatSkin.Bubble.DEFAULT`。皮肤文件缺失或损坏时用 `ChatSkin.fallback()`，**不抛异常**。
+
+模块拆分（`com.group_finity.mascot.chat`）：
+
+| 类 | 职责 |
+| :--- | :--- |
+| `ChatBubble` | 窗口本身：布局、输入、发送、回显、跟随定时器、按皮肤摆按钮 |
+| `ChatSkin` | 解析 `chat.xml`，按钮列表、几何、`Bubble`，按图像集缓存（`forImageSet`） |
+| `ChatTheme` | 深/浅两套色板；`ChatLightMode` 只做黑白互换 |
+| `ChatIcons` | SVG / 位图加载、超采样、缩放、着色 |
+| `AttachmentStrip` | 附件模型、chip 自绘、文件与剪贴板读取、缩略图、换行高度 |
+| `BubbleStack` | 每个桌宠的气泡列表、最多 2 个的淘汰、上下堆叠与屏幕钳制 |
+| `BubbleShape` | 圆角本体 + 小尖尖合并为单个 `Area`，绘制与 `setShape` 共用 |
+| `FileDialogs` | 系统原生文件/目录对话框 |
 
 交互约定：
 
 | 操作 | 结果 |
 | :--- | :--- |
-| **Ctrl + 左键**单击桌宠 | 打开/关闭聊天框（在 `mousePressed` 里处理，不进拖拽流程） |
-| 关闭聊天框时的**任意左键**单击桌宠 | 关闭聊天框（在 `mousePressed` 的 `else` 分支里，判 `BUTTON1` 后 `return`） |
-| Enter | 发送（目前只 `log.info`） |
-| Shift+Enter | 换行，窗口无限增高 |
+| **Ctrl + 左键**单击桌宠 | 打开/关闭输入框（在 `mousePressed` 里处理，不进拖拽流程） |
+| 输入框开启时**任意左键**单击桌宠 | 关闭输入框 |
+| **Enter** | 发送：当前输入框**原地变成输出气泡**（输入区、按钮全部消失） |
+| **Shift+Enter** | 换行，窗口无限增高 |
+| 点 **Attach** | 系统文件对话框（多选），加入附件 |
+| **Ctrl+V** | 剪贴板有文件/图片就加附件，否则按普通文本粘贴 |
+| 气泡上的 **×** | 关闭该气泡（输入框关闭时会解冻桌宠） |
 
+- 每个桌宠**最多同时存在 2 个气泡**（1 个输入 + 最多 1 个历史输出）。再唤出输入框时，最旧的先关掉。
+- 发送后解除冻结：`setPaused(false)` → 把当初的 `releaseEvent` 交回原 `Behavior.mouseReleased()`，桌宠继续下落。
 - 打开时：先 `setBehavior("StandForChat")` → `tick()` → `apply()` → 再 `setPaused(true)`，否则姿态不会刷新，且空中会因 `LostGroundException` 掉回 `Fall`。
-- 关闭时：`setPaused(false)` → 把当初的 `releaseEvent` 交回原 `Behavior.mouseReleased()`，桌宠从冻结位置继续下落。
-- `conf/actions.xml` 新增 `StandForChat`（`Type="Stay"`，**不带 `BorderType`**，任何位置都能保持），`conf/behaviors.xml` 新增同名 `Behavior`（`Frequency="0" Hidden="true"`）。
+- **未配置 DeepTutor 时 Ctrl+左键完全静默**（不切姿态、不冻结、不建窗）；右键菜单的「打开聊天框」置灰并带提示。`openChat()` 内部再查一次，防止从菜单绕过。
+- 目前**未接网络**：`send()` 只写日志，并用输入内容自己回显成输出气泡，方便先验 UI。
+
+附件（`AttachmentStrip`）：
+
+- 位于**头部同一行**，与关闭按钮左右两端对齐，头部整体距上边框 `HEADER_TOP_INSET = 8`。
+- 每个 chip 完全自绘：`文件名（超长省略…）` + `右槽` + `×`。右槽是**图片缩略图**（14px）或**大写扩展名**（`JAVA`、`PY`）。
+- 每行至少容纳 **3 个** chip；超出换行，行高计入窗口高度。
+- 粘贴的图片命名为「粘贴的图片 N」，显示缩略图，不显示扩展名。
 
 ### ⚠️ IME 花屏的三条硬约束（踩过坑，别回退）
 
 中文输入法（微软拼音）在输入框里出现条纹/四块重影，根因与文本框透明度无关，而是**顶层窗口的 per-pixel alpha**。
 
 1. **顶层窗口不能透明**：`setBackground(new Color(0,0,0,0))` 会让窗口变成 layered window，IME 的 composition string 由 TSF 直接画在 surface 上，DWM 合成时会重复采样。
-   → 改用 `setBackground(UIManager.getColor("Panel.background"))` + `setShape(new RoundRectangle2D...)` 做圆角裁剪。
+   → 改用 `setBackground(ChatTheme.background())` + `setShape(BubbleShape.panel(...))` 做形状裁剪。
 2. **`JTextArea` 必须不透明**，否则 IME 没有实心绘制面。
 3. **不要用 `JScrollPane` 包输入框**：多一层透明 viewport，还会把 IME 预输入挤进额外绘制层。窗口靠 `resizeToFitText()` 自己长高。
 
@@ -112,6 +148,8 @@ img/Shimeji/chat/          ← 每个图像集各自一套，不能放在 img/ �
 - `JTextArea` 默认没有 `Shift+Enter` 绑定，必须显式绑 `DefaultEditorKit.insertBreakAction`。
 - Tooltip 必须 `ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false)`，否则会被小窗口裁掉。
 - 按钮放在文本框**下方**（`BorderLayout.SOUTH`），放两侧会随窗口长高而垂直居中。
+- 附件 chip 不要用 `JLabel` + `JButton` 拼：`FlowLayout` 会把下边框裁掉、删除按钮会被挤没。整块自绘（`AttachmentStrip.ChipView`）。
+- 气泡跟随用 `16ms` 定时器，并在位置/形状未变时跳过 `setLocation`、`doLayout`、`repaint`，否则会明显滞后且空转重绘。
 
 ---
 
@@ -123,16 +161,21 @@ img/Shimeji/chat/          ← 每个图像集各自一套，不能放在 img/ �
   - 编写并运行独立 main 测试，验证与藤原妹红的实时连通与流式吐字。
 - [ ] **Task 2.2: 注入至 Shimeji 主控中枢**
   - 在 `Main.java` 或 `Manager.java` 中挂载通信单例。
-  - 把 `InputWindow.send()` 从 `log.info` 换成真实调用。
+  - 把 `ChatBubble.send()` 从「日志 + 原样回显」换成真实调用（现在搜索 `Sending message:` 一处就能找到）。
+  - 注意：输出气泡目前是**不可聚焦**的只读窗口，流式吐字直接反复调用 `setMessage()` 即可。
 
 ---
 
-## 阶段三：免焦点跟随气泡
+## 阶段三：免焦点跟随气泡（已完成 ✅）
 
-- [ ] **Task 3.1: 研发无焦点气泡窗体 `MascotBubble`**
-  - 基于 `JWindow` + `getFocusableWindowState() == false` 保证打字光标不被打扰（气泡只读，不需要 IME）。
-  - 实现流式打字机动画与自适应气泡尺寸。
-  - 皮肤同样放在各图像集的 `chat/` 目录下（`chat.xml` 增加 `<Bubble>` 节点）。
+- [x] **Task 3.1: 气泡窗体**
+  - 气泡与输入框是**同一个类** `ChatBubble`，只在构造时区分 `editing`；输出气泡调 `setFocusableWindowState(false)`，不抢键盘焦点。
+  - 输入框回车后**原地变成输出气泡**，输入内容和按钮全部消失，不再新建窗口。
+  - 每个桌宠最多 2 个气泡（`BubbleStack.MAX_BUBBLES`），再唤出输入框时淘汰最旧的。
+  - 皮肤放在各图像集的 `chat/chat.xml`，`<Bubble>` 节点控制最大宽度、圆角、描边、内边距、小尖尖尺寸。
+  - 小尖尖与本体合并成一个 `Area`（`BubbleShape`），描边完整、没有接缝，`setShape` 用同一路径裁剪窗口。
+- [ ] **Task 3.2: 流式打字机动画**
+  - 现在是一次性 `setMessage()`。接上 SSE 后改成逐段追加，并在每次追加后调用 `sizeToFitMessage()` + `BubbleStack.repositionAll()`。
 
 ---
 

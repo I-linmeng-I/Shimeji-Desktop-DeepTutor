@@ -118,6 +118,13 @@
         </dependency>
 
         <dependency>
+            <!-- SVG rendering for chat panel icons -->
+            <groupId>com.github.weisj</groupId>
+            <artifactId>jsvg</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+
+        <dependency>
             <!-- SLF4J API -->
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

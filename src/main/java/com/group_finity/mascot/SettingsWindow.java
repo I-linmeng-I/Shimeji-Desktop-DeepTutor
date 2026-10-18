@@ -5,6 +5,7 @@
  */
 package com.group_finity.mascot;
 
+import com.group_finity.mascot.chat.FileDialogs;
 import com.group_finity.mascot.image.Filter;
 import com.group_finity.mascot.image.ImageUtils;
 import com.group_finity.mascot.platform.virtual.VirtualContentPanel;
@@ -48,6 +49,7 @@ public class SettingsWindow extends JDialog implements Localizable {
     private String deepTutorPartner = "";
     private int chatWidth = 360;
     private int chatFontSize = 13;
+    private boolean chatLightMode = false;
     private boolean drawShimejiBounds = false;
     private Filter filter = Filter.NEAREST_NEIGHBOUR;
     private double scaling = 1.0;
@@ -105,6 +107,7 @@ public class SettingsWindow extends JDialog implements Localizable {
         deepTutorPartner = settings.deepTutorPartner;
         chatWidth = settings.chatWidth;
         chatFontSize = settings.chatFontSize;
+        chatLightMode = settings.chatLightMode;
         drawShimejiBounds = settings.drawShimejiBounds;
         filter = settings.filter;
         opacity = settings.opacity;
@@ -173,6 +176,7 @@ public class SettingsWindow extends JDialog implements Localizable {
         txtDeepTutorDirectory.setText(deepTutorDirectory);
         spnChatWidth.setValue(chatWidth);
         spnChatFontSize.setValue(chatFontSize);
+        chkChatLightMode.setSelected(chatLightMode);
         refreshPartnerList();
     }
 
@@ -224,6 +228,7 @@ public class SettingsWindow extends JDialog implements Localizable {
         lblBackendPort.setText(languageBundle.getString("BackendPort"));
         lblChatWidth.setText(languageBundle.getString("ChatWidth"));
         lblChatFontSize.setText(languageBundle.getString("ChatFontSize"));
+        chkChatLightMode.setText(languageBundle.getString("ChatLightMode"));
         btnDone.setText(languageBundle.getString("Done"));
         btnCancel.setText(languageBundle.getString("Cancel"));
     }
@@ -852,6 +857,7 @@ public class SettingsWindow extends JDialog implements Localizable {
         settings.deepTutorPartner = deepTutorPartner;
         settings.chatWidth = (Integer) spnChatWidth.getValue();
         settings.chatFontSize = (Integer) spnChatFontSize.getValue();
+        settings.chatLightMode = chkChatLightMode.isSelected();
 
         selectionConfirmed = true;
 
@@ -1113,6 +1119,7 @@ public class SettingsWindow extends JDialog implements Localizable {
         spnChatWidth = new JSpinner(new SpinnerNumberModel(360, 200, 1200, 10));
         lblChatFontSize = new JLabel("Chat Font Size");
         spnChatFontSize = new JSpinner(new SpinnerNumberModel(13, 8, 48, 1));
+        chkChatLightMode = new JCheckBox("Light Mode");
 
         pnlDeepTutor.add(lblDeepTutorDirectory);
         pnlDeepTutor.add(createFieldRow(txtDeepTutorDirectory, btnBrowseDeepTutor));
@@ -1124,6 +1131,8 @@ public class SettingsWindow extends JDialog implements Localizable {
         pnlDeepTutor.add(createPairRow(
                 createColumn(lblChatWidth, spnChatWidth),
                 createColumn(lblChatFontSize, spnChatFontSize), 0.5));
+        pnlDeepTutor.add(javax.swing.Box.createVerticalStrut(10));
+        pnlDeepTutor.add(chkChatLightMode);
         pnlDeepTutor.add(javax.swing.Box.createVerticalGlue());
 
         return pnlDeepTutor;
@@ -1228,12 +1237,11 @@ public class SettingsWindow extends JDialog implements Localizable {
     }
 
     private void btnBrowseDeepTutorActionPerformed(ActionEvent evt) {
-        final JFileChooser dialog = new JFileChooser();
-        dialog.setDialogTitle(Main.getInstance().getLanguageBundle().getString("DeepTutorDirectory"));
-        dialog.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-
-        if (dialog.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            txtDeepTutorDirectory.setText(dialog.getSelectedFile().getPath());
+        Path initial = deepTutorDirectory.isBlank() ? null : Path.of(deepTutorDirectory);
+        Path selected = FileDialogs.chooseDirectory(this,
+                Main.getInstance().getLanguageBundle().getString("DeepTutorDirectory"), initial);
+        if (selected != null) {
+            txtDeepTutorDirectory.setText(selected.toString());
             deepTutorPartner = "";
             refreshPartnerList();
         }
@@ -1267,6 +1275,7 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JButton btnWebsite;
     private javax.swing.JCheckBox chkAlwaysShowInformationScreen;
     private javax.swing.JCheckBox chkAlwaysShowShimejiChooser;
+    private javax.swing.JCheckBox chkChatLightMode;
     private javax.swing.JCheckBox chkDrawShimejiBounds;
     private javax.swing.JCheckBox chkShowTrayIcon;
     private javax.swing.JCheckBox chkWindowModeEnabled;

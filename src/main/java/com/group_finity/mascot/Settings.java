@@ -162,6 +162,12 @@ public class Settings {
     public int chatFontSize = 13;
 
     /**
+     * Whether the chat input window and the speech bubble use the light look (white background with black text
+     * and outline) instead of the default dark look.
+     */
+    public boolean chatLightMode = false;
+
+    /**
      * Whether to draw geometry information for mascots, for debugging purposes.
      * The geometry information of a mascot includes its bounds, anchor point, and hotspots.
      */
@@ -285,6 +291,7 @@ public class Settings {
         deepTutorPartner = properties.getProperty("DeepTutorPartner", "");
         chatWidth = getIntProperty(properties, "ChatWidth", 360);
         chatFontSize = getIntProperty(properties, "ChatFontSize", 13);
+        chatLightMode = getBooleanProperty(properties, "ChatLightMode", false);
         drawShimejiBounds = getBooleanProperty(properties, "DrawShimejiBounds", false);
         String filterText = properties.getProperty("Filter", "false");
         if (filterText.equalsIgnoreCase("true") || filterText.equalsIgnoreCase("hqx")) {
@@ -343,6 +350,25 @@ public class Settings {
             log.error("Failed to read DeepTutor system settings from \"{}\"", settingsFile, e);
         }
         return 0;
+    }
+
+    /**
+     * Checks whether DeepTutor is configured well enough to open the chat panel.
+     * The directory must exist, a partner must be selected, and the backend port must be readable.
+     *
+     * @return {@code true} if the chat panel can be opened
+     */
+    public boolean isDeepTutorConfigured() {
+        if (deepTutorDirectory == null || deepTutorDirectory.isBlank()
+                || deepTutorPartner == null || deepTutorPartner.isBlank()) {
+            return false;
+        }
+        try {
+            Path directory = Path.of(deepTutorDirectory);
+            return Files.isDirectory(directory) && readBackendPort(directory) > 0;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /**
@@ -495,6 +521,7 @@ public class Settings {
         properties.setProperty("DeepTutorPartner", deepTutorPartner);
         properties.setProperty("ChatWidth", String.valueOf(chatWidth));
         properties.setProperty("ChatFontSize", String.valueOf(chatFontSize));
+        properties.setProperty("ChatLightMode", String.valueOf(chatLightMode));
         properties.setProperty("DrawShimejiBounds", String.valueOf(drawShimejiBounds));
         /*
         BUG: Using switch statements in this method seem to sometimes cause NoClassDefFoundError (likely related to the

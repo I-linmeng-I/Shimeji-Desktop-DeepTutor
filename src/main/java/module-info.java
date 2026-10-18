@@ -8,6 +8,7 @@ module com.group_finity.mascot {
     requires org.apache.commons.exec;
     requires com.jthemedetector;
     requires com.formdev.flatlaf;
+    requires com.github.weisj.jsvg;
     requires org.slf4j;
 
     // Export classes used in scripting
