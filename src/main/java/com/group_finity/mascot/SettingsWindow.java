@@ -46,6 +46,8 @@ public class SettingsWindow extends JDialog implements Localizable {
     private boolean alwaysShowInformationScreen = false;
     private String deepTutorDirectory = "";
     private String deepTutorPartner = "";
+    private int chatWidth = 360;
+    private int chatFontSize = 13;
     private boolean drawShimejiBounds = false;
     private Filter filter = Filter.NEAREST_NEIGHBOUR;
     private double scaling = 1.0;
@@ -101,6 +103,8 @@ public class SettingsWindow extends JDialog implements Localizable {
         alwaysShowInformationScreen = settings.alwaysShowInformationScreen;
         deepTutorDirectory = settings.deepTutorDirectory;
         deepTutorPartner = settings.deepTutorPartner;
+        chatWidth = settings.chatWidth;
+        chatFontSize = settings.chatFontSize;
         drawShimejiBounds = settings.drawShimejiBounds;
         filter = settings.filter;
         opacity = settings.opacity;
@@ -167,6 +171,8 @@ public class SettingsWindow extends JDialog implements Localizable {
         btnBackgroundImageRemove.setEnabled(windowedMode && backgroundImage != null);
 
         txtDeepTutorDirectory.setText(deepTutorDirectory);
+        spnChatWidth.setValue(chatWidth);
+        spnChatFontSize.setValue(chatFontSize);
         refreshPartnerList();
     }
 
@@ -215,6 +221,9 @@ public class SettingsWindow extends JDialog implements Localizable {
         btnBrowseDeepTutor.setText(languageBundle.getString("Browse"));
         lblPartner.setText(languageBundle.getString("Partner"));
         btnRefreshPartners.setText(languageBundle.getString("Refresh"));
+        lblBackendPort.setText(languageBundle.getString("BackendPort"));
+        lblChatWidth.setText(languageBundle.getString("ChatWidth"));
+        lblChatFontSize.setText(languageBundle.getString("ChatFontSize"));
         btnDone.setText(languageBundle.getString("Done"));
         btnCancel.setText(languageBundle.getString("Cancel"));
     }
@@ -841,6 +850,8 @@ public class SettingsWindow extends JDialog implements Localizable {
         deepTutorPartner = partner == null ? "" : partner.id();
         settings.deepTutorDirectory = deepTutorDirectory;
         settings.deepTutorPartner = deepTutorPartner;
+        settings.chatWidth = (Integer) spnChatWidth.getValue();
+        settings.chatFontSize = (Integer) spnChatFontSize.getValue();
 
         selectionConfirmed = true;
 
@@ -1089,28 +1100,75 @@ public class SettingsWindow extends JDialog implements Localizable {
         pnlDeepTutor.setLayout(new javax.swing.BoxLayout(pnlDeepTutor, javax.swing.BoxLayout.PAGE_AXIS));
 
         lblDeepTutorDirectory = new JLabel("DeepTutor Directory");
-        lblDeepTutorDirectory.setAlignmentX(Component.LEFT_ALIGNMENT);
         txtDeepTutorDirectory = new JTextField();
         btnBrowseDeepTutor = new JButton("Browse");
         btnBrowseDeepTutor.addActionListener(this::btnBrowseDeepTutorActionPerformed);
         lblPartner = new JLabel("Partner");
-        lblPartner.setAlignmentX(Component.LEFT_ALIGNMENT);
         cmbPartner = new JComboBox<>();
         btnRefreshPartners = new JButton("Refresh");
         btnRefreshPartners.addActionListener(this::btnRefreshPartnersActionPerformed);
         lblBackendPort = new JLabel("Backend Port");
-        lblBackendPort.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblBackendPortValue = new JLabel("-");
+        lblChatWidth = new JLabel("Chat Width");
+        spnChatWidth = new JSpinner(new SpinnerNumberModel(360, 200, 1200, 10));
+        lblChatFontSize = new JLabel("Chat Font Size");
+        spnChatFontSize = new JSpinner(new SpinnerNumberModel(13, 8, 48, 1));
 
         pnlDeepTutor.add(lblDeepTutorDirectory);
         pnlDeepTutor.add(createFieldRow(txtDeepTutorDirectory, btnBrowseDeepTutor));
         pnlDeepTutor.add(javax.swing.Box.createVerticalStrut(10));
-        pnlDeepTutor.add(lblPartner);
-        pnlDeepTutor.add(createFieldRow(cmbPartner, btnRefreshPartners));
+        pnlDeepTutor.add(createPairRow(
+                createColumn(lblPartner, createFieldRow(cmbPartner, btnRefreshPartners)),
+                createColumn(lblBackendPort, createFieldRow(lblBackendPortValue, null)), 0.68));
         pnlDeepTutor.add(javax.swing.Box.createVerticalStrut(10));
-        pnlDeepTutor.add(lblBackendPort);
+        pnlDeepTutor.add(createPairRow(
+                createColumn(lblChatWidth, spnChatWidth),
+                createColumn(lblChatFontSize, spnChatFontSize), 0.5));
         pnlDeepTutor.add(javax.swing.Box.createVerticalGlue());
 
         return pnlDeepTutor;
+    }
+
+    /**
+     * Builds a label stacked above its control, to be used as one cell of {@link #createPairRow}.
+     */
+    private static JPanel createColumn(JComponent label, JComponent field) {
+        JPanel column = new JPanel(new BorderLayout(0, 2));
+        column.setOpaque(false);
+        column.add(label, BorderLayout.NORTH);
+        column.add(field, BorderLayout.CENTER);
+        return column;
+    }
+
+    /**
+     * Places two columns side by side in a single row.
+     *
+     * @param left the column on the left
+     * @param right the column on the right
+     * @param leftWeight the share of the available width given to the left column
+     */
+    private static JPanel createPairRow(JPanel left, JPanel right, double leftWeight) {
+        JPanel row = new JPanel(new GridBagLayout());
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridy = 0;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.anchor = GridBagConstraints.NORTHWEST;
+
+        constraints.gridx = 0;
+        constraints.weightx = leftWeight;
+        constraints.insets = new Insets(0, 0, 0, 8);
+        row.add(left, constraints);
+
+        constraints.gridx = 1;
+        constraints.weightx = 1 - leftWeight;
+        constraints.insets = new Insets(0, 0, 0, 0);
+        row.add(right, constraints);
+
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+        return row;
     }
 
     private static JPanel createFieldRow(JComponent field, JComponent button) {
@@ -1118,7 +1176,9 @@ public class SettingsWindow extends JDialog implements Localizable {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
         row.add(field, BorderLayout.CENTER);
-        row.add(button, BorderLayout.EAST);
+        if (button != null) {
+            row.add(button, BorderLayout.EAST);
+        }
         return row;
     }
 
@@ -1151,7 +1211,7 @@ public class SettingsWindow extends JDialog implements Localizable {
             }
         }
 
-        lblBackendPort.setText(Main.getInstance().getLanguageBundle().getString("BackendPort") + ": " + (port == 0 ? "-" : port));
+        lblBackendPortValue.setText(port == 0 ? "-" : String.valueOf(port));
     }
 
     private static String readPartnerName(Path configFile, String fallback) {
@@ -1224,6 +1284,9 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JLabel lblBackgroundImage;
     private javax.swing.JLabel lblBackgroundImageCaption;
     private javax.swing.JLabel lblBackendPort;
+    private javax.swing.JLabel lblBackendPortValue;
+    private javax.swing.JLabel lblChatFontSize;
+    private javax.swing.JLabel lblChatWidth;
     private javax.swing.JLabel lblDeepTutorDirectory;
     private javax.swing.JLabel lblDevelopedBy;
     private javax.swing.JLabel lblDimensions;
@@ -1262,6 +1325,8 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.Box.Filler rigid4;
     private javax.swing.JSlider sldOpacity;
     private javax.swing.JSlider sldScaling;
+    private javax.swing.JSpinner spnChatFontSize;
+    private javax.swing.JSpinner spnChatWidth;
     private javax.swing.JSpinner spnWindowHeight;
     private javax.swing.JSpinner spnWindowWidth;
     private javax.swing.JTextField txtBackgroundColor;

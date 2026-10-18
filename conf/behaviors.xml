@@ -36,6 +36,9 @@
         <Behavior Name="PullUp" Frequency="0" Hidden="true"/>
         <Behavior Name="Divided" Frequency="0" Hidden="true"/>
 
+        <!-- Used while the chat input window is open, regardless of where the mascot is -->
+        <Behavior Name="StandForChat" Frequency="0" Hidden="true"/>
+
         <!-- On the Floor -->
         <Condition Condition="#{mascot.environment.floor.isOn(mascot.anchor)}">
             <Behavior Name="StandUp" Frequency="200" Hidden="true"/>

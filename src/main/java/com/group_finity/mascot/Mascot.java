@@ -5,6 +5,7 @@ import com.group_finity.mascot.animation.Hotspot;
 import com.group_finity.mascot.behavior.Behavior;
 import com.group_finity.mascot.behavior.BehaviorExecutionException;
 import com.group_finity.mascot.behavior.UserBehavior;
+import com.group_finity.mascot.chat.InputWindow;
 import com.group_finity.mascot.config.BehaviorInstantiationException;
 import com.group_finity.mascot.config.Configuration;
 import com.group_finity.mascot.environment.Area;
@@ -48,6 +49,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class Mascot {
     private static final Logger log = LoggerFactory.getLogger(Mascot.class);
+
+    /**
+     * The name of the behavior that this {@code Mascot} switches to before the chat input window is opened.
+     * This behavior uses the StandUp pose but does not require the mascot to be on the floor.
+     */
+    private static final String BEHAVIORNAME_STAND_FOR_CHAT = "StandForChat";
 
     /**
      * The ID of the last generated {@code Mascot}.
@@ -432,7 +439,20 @@ public class Mascot {
         // because popup menus are triggered differently on different systems
         if (event.isPopupTrigger()) {
             showPopup(event.getX(), event.getY());
+        } else if (event.isControlDown() && event.getButton() == MouseEvent.BUTTON1) {
+            // Ctrl+left click toggles the chat input window. It is handled here rather than in
+            // mouseReleased so the mascot never starts a drag for this click.
+            if (InputWindow.isOpenFor(this)) {
+                InputWindow.closeFor(this);
+            } else if (!paused) {
+                openChat(event);
+            }
         } else {
+            // A left click closes the chat input window if it is open
+            if (event.getButton() == MouseEvent.BUTTON1 && InputWindow.isOpenFor(this)) {
+                InputWindow.closeFor(this);
+                return;
+            }
             // Switch to drag animation when mouse is pressed
             if (!paused && behavior != null) {
                 try {
@@ -457,17 +477,37 @@ public class Mascot {
         // because popup menus are triggered differently on different systems
         if (event.isPopupTrigger()) {
             showPopup(event.getX(), event.getY());
-        } else {
-            if (!paused && behavior != null) {
-                try {
-                    behavior.mouseReleased(event);
-                } catch (final BehaviorExecutionException e) {
-                    log.error("Severe error in mouse release handler for mascot \"{}\"", this, e);
-                    Main.showError(Main.getInstance().getLanguageBundle().getString("SevereShimejiErrorErrorMessage"), e);
-                    dispose();
-                }
+        } else if (!paused && behavior != null) {
+            try {
+                behavior.mouseReleased(event);
+            } catch (final BehaviorExecutionException e) {
+                log.error("Severe error in mouse release handler for mascot \"{}\"", this, e);
+                Main.showError(Main.getInstance().getLanguageBundle().getString("SevereShimejiErrorErrorMessage"), e);
+                dispose();
             }
         }
+    }
+
+    /**
+     * Switches this {@code Mascot} to its resting pose and opens the chat input window next to it.
+     * The behavior that was active when the mouse was released is resumed when the window is closed.
+     *
+     * @param event the event created by a mouse button being released, or {@code null} if this was triggered
+     * from the context menu
+     */
+    private void openChat(final MouseEvent event) {
+        final Behavior releasedBehavior = behavior;
+
+        try {
+            setBehavior(Main.getInstance().getConfiguration(imageSet).buildBehavior(BEHAVIORNAME_STAND_FOR_CHAT));
+        } catch (final BehaviorInstantiationException | BehaviorExecutionException e) {
+            log.error("Failed to switch mascot \"{}\" to its resting pose", this, e);
+        }
+        // Advance and draw one tick so the resting pose is visible before this mascot is frozen
+        tick();
+        apply();
+
+        InputWindow.toggleNextTo(this, releasedBehavior, event);
     }
 
     /**
@@ -499,6 +539,9 @@ public class Mascot {
 
         final JMenuItem callAnotherItem = new JMenuItem(languageBundle.getString("CallAnother"));
         callAnotherItem.addActionListener(event -> Main.getInstance().createMascot(imageSet));
+
+        final JMenuItem showChatInput = new JMenuItem(languageBundle.getString("ShowChatInput"));
+        showChatInput.addActionListener(event -> openChat(null));
 
         final JMenuItem followCursorItem = new JMenuItem(languageBundle.getString("FollowCursor"));
         followCursorItem.addActionListener(event -> manager.setBehaviorAll(Main.getInstance().getConfiguration(imageSet), UserBehavior.BEHAVIORNAME_CHASEMOUSE, imageSet));
@@ -572,6 +615,8 @@ public class Mascot {
         closeMenu.addActionListener(e -> Main.getInstance().exit());
 
         popup.add(callAnotherItem);
+        popup.addSeparator();
+        popup.add(showChatInput);
         popup.addSeparator();
         popup.add(followCursorItem);
         popup.add(restoreWindowsItem);

@@ -58,6 +58,29 @@ sequenceDiagram
 
 ## 四、 DeepTutor 伴学集成槽位
 
-1. **服务单例通信层**：在 `com.group_finity.mascot.deeptutor.DeepTutorClient` 中使用现代 Java 11+ 内置的 `java.net.http.HttpClient`，直接连接 `http://127.0.0.1:8001/api/partners/partner-e67bc7f6`，支持 HTTP POST 与 SSE 流式解析。
-2. **免激活跟随气泡**：使用 Swing 的无边框 `JWindow`，重写 `getFocusableWindowState() -> false`，利用 GDI+/Java2D 绘制抗锯齿圆角半透明对话框，实时依附在 `Mascot.getAnchor()` 之上。
-3. **快捷唤出与交互**：鼠标双击妹红或全局热键（通过 JNA `RegisterHotKey`）唤起极简单行输入栏。
+1. **服务单例通信层**：在 `com.group_finity.mascot.deeptutor.DeepTutorClient` 中使用现代 Java 11+ 内置的 `java.net.http.HttpClient`，连接 `http://127.0.0.1:<port>/api/partners/<partner-id>`。
+   * `<port>` 由 `Settings.readBackendPort(...)` 从 `<DeepTutor目录>/data/user/settings/system.json` 的 `backend_port` 读取。
+   * `<partner-id>` 由设置页的“伙伴”下拉给出（如 `partner-e67bc7f6`）。
+2. **免激活跟随气泡（未实现）**：使用 Swing 的无边框 `JWindow`，重写 `getFocusableWindowState() -> false`，利用 GDI+/Java2D 绘制抗锯齿圆角半透明对话框，实时依附在 `Mascot.getAnchor()` 之上。
+   * 气泡是只读的，不需要 IME，所以可以继续用透明 `JWindow`；但**输入框不行**，见下方第 4 条。
+3. **快捷唤出**：`Ctrl + 左键`单击妹红开/关聊天输入框（在 `Mascot.mousePressed` 中处理，不进入拖拽状态机）；关闭时任意左键单击亦可。
+4. **聊天输入框（已实现 `chat/InputWindow`）**：
+   * 皮肤放在各图像集自己的 `img/<图像集>/chat/` 下（`chat.xml` + 图标），换桌宠即换皮肤。
+   * **必须是 `JDialog` 且窗口不透明**：透明顶层窗口会让中文 IME 的 composition string 重复采样而花屏；圆角用 `setShape()` 裁剪。
+   * 尺寸与字体由设置页控制（`ChatWidth` / `ChatFontSize`），高度随内容自动增长。
+
+---
+
+## 五、 资源目录约定
+
+```
+img/<图像集>/
+    actions.xml / 动作切片...
+    chat/
+        chat.xml              ← 输入框（及将来的气泡）皮肤
+        input-attach.png
+        input-send.png
+```
+
+> `img/` 下的**每个一级子目录都会被当成一个图像集**。因此 `chat/` 必须放在图像集内部，不能放 `img/chat/`，否则启动时会多出一个名叫 chat 的桌宠。
+

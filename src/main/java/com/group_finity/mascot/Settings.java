@@ -152,6 +152,16 @@ public class Settings {
     public String deepTutorPartner = "";
 
     /**
+     * The width of the chat input window, in pixels.
+     */
+    public int chatWidth = 360;
+
+    /**
+     * The font size of the chat input window's text field, in points.
+     */
+    public int chatFontSize = 13;
+
+    /**
      * Whether to draw geometry information for mascots, for debugging purposes.
      * The geometry information of a mascot includes its bounds, anchor point, and hotspots.
      */
@@ -273,6 +283,8 @@ public class Settings {
         alwaysShowInformationScreen = getBooleanProperty(properties, "AlwaysShowInformationScreen", false);
         deepTutorDirectory = properties.getProperty("DeepTutorDirectory", "");
         deepTutorPartner = properties.getProperty("DeepTutorPartner", "");
+        chatWidth = getIntProperty(properties, "ChatWidth", 360);
+        chatFontSize = getIntProperty(properties, "ChatFontSize", 13);
         drawShimejiBounds = getBooleanProperty(properties, "DrawShimejiBounds", false);
         String filterText = properties.getProperty("Filter", "false");
         if (filterText.equalsIgnoreCase("true") || filterText.equalsIgnoreCase("hqx")) {
@@ -481,6 +493,8 @@ public class Settings {
         properties.setProperty("AlwaysShowInformationScreen", String.valueOf(alwaysShowInformationScreen));
         properties.setProperty("DeepTutorDirectory", deepTutorDirectory);
         properties.setProperty("DeepTutorPartner", deepTutorPartner);
+        properties.setProperty("ChatWidth", String.valueOf(chatWidth));
+        properties.setProperty("ChatFontSize", String.valueOf(chatFontSize));
         properties.setProperty("DrawShimejiBounds", String.valueOf(drawShimejiBounds));
         /*
         BUG: Using switch statements in this method seem to sometimes cause NoClassDefFoundError (likely related to the

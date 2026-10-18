@@ -14,6 +14,13 @@
             </Animation>
         </Action>
 
+        <!-- Used when the mascot is frozen in place by the chat input window, which may happen off the floor -->
+        <Action Name="StandForChat" Type="Stay">
+            <Animation>
+                <Pose Image="/shime47.png" ImageAnchor="64,128" Velocity="0,0" Duration="250"/>
+            </Animation>
+        </Action>
+
         <Action Name="Walk" Type="Move" BorderType="Floor">
             <Animation>
                 <Pose Image="/shime1.png" ImageAnchor="64,128" Velocity="-2,0" Duration="6"/>

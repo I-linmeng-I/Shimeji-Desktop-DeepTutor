@@ -35,10 +35,13 @@ graph LR
 在包 `com.group_finity.mascot.deeptutor` 下构建轻量客户端：
 
 * **底层网络**：直接使用 Java 11+ 内置的 `java.net.http.HttpClient`，无需引入沉重的外部网络库。
-* **协议与端点**：
-  * 健康探针：`GET http://127.0.0.1:8001/api/system/status`
-  * 伙伴信息：`GET http://127.0.0.1:8001/api/partners/partner-e67bc7f6`
-  * 流式对话：`POST http://127.0.0.1:8001/api/partners/partner-e67bc7f6/chat/execute-stream`
+* **地址来源**（不要写死）：
+  * 端口：`Settings.readBackendPort(Path.of(settings.deepTutorDirectory))` 读 `<目录>/data/user/settings/system.json` 的 `backend_port`。
+  * 伙伴 ID：`settings.deepTutorPartner`（设置页下拉选出的目录名，如 `partner-e67bc7f6`）。
+* **协议与端点**（`http://127.0.0.1:<port>`）：
+  * 健康探针：`GET /api/system/status`
+  * 伙伴信息：`GET /api/partners/<partner-id>`
+  * 流式对话：`POST /api/partners/<partner-id>/chat/execute-stream`
 * **SSE 解析器**：
   * 读取 `HttpResponse<InputStream>` 流式行，按 `event:` 与 `data:` 进行正则/简单切分。
   * 提取 `content`（妹红流式输出内容）与 `thinking`（思考内容）。
@@ -62,7 +65,22 @@ graph LR
 
 ---
 
-## 四、 极简输入框设计 (`MascotInput.java`)
+## 四、 极简输入框设计（已实现：`chat/InputWindow.java`）
 
-* 单击妹红或按快捷键后，在妹红旁边淡入一个极简文本输入框；
-* 按 `Enter` 触发 `client.streamMessage(text)`，同时唤起 `MascotBubble`，输入框淡出隐藏。
+> 实际类名是 `InputWindow`，位于 `com.group_finity.mascot.chat`；皮肤解析在 `ChatSkin`。
+
+* **触发**：`Ctrl + 左键`单击妹红开/关；关闭时任意左键单击也可。在 `Mascot.mousePressed` 中处理，不进入拖拽状态机。
+* **切换姿态**：开窗前 `setBehavior("StandForChat")` → `tick()` → `apply()`，再 `setPaused(true)`；关窗后把原 `releaseEvent` 交回原 `Behavior.mouseReleased()`。
+* **输入**：`JTextArea`，`Enter` 发送（当前仅日志），`Shift+Enter` 换行，窗口随行数无限增高。
+* **按钮**：位于文本框下方，左右分组（`Align="Left"`），tooltip 文案走语言包（`<Name>Tooltip`）。
+
+### ⚠️ 顶层窗口必须是 `JDialog` 且不透明
+
+| 错误做法 | 后果 |
+| :--- | :--- |
+| `JWindow` | Windows 不激活它，永远抢不到键盘焦点 |
+| `setBackground(透明)` | layered window，中文 IME 预输入被重复采样 → 条纹/四块花屏 |
+| `JScrollPane` 包输入框 | 多一层透明 viewport，同样导致 IME 渲染异常 |
+
+正确做法：`JDialog(undecorated)` + `setBackground(Panel.background)` + `setShape(RoundRectangle2D)` 做圆角裁剪 + `JTextArea.setOpaque(true)`。
+
