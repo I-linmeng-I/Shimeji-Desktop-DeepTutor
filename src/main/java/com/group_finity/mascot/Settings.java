@@ -9,10 +9,13 @@ import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -23,6 +26,8 @@ import java.util.stream.Collectors;
  */
 public class Settings {
     private static final Logger log = LoggerFactory.getLogger(Settings.class);
+
+    private static final Pattern BACKEND_PORT_PATTERN = Pattern.compile("\"backend_port\"\\s*:\\s*(\\d+)");
 
     /**
      * The property list containing the raw data read from the settings file.
@@ -135,6 +140,16 @@ public class Settings {
      * @see InformationWindow
      */
     public boolean alwaysShowInformationScreen = false;
+
+    /**
+     * The root directory of the DeepTutor installation.
+     */
+    public String deepTutorDirectory = "";
+
+    /**
+     * The directory name of the DeepTutor partner used for chatting.
+     */
+    public String deepTutorPartner = "";
 
     /**
      * Whether to draw geometry information for mascots, for debugging purposes.
@@ -256,6 +271,8 @@ public class Settings {
         showTrayIcon = getBooleanProperty(properties, "ShowTrayIcon", true);
         alwaysShowShimejiChooser = getBooleanProperty(properties, "AlwaysShowShimejiChooser", false);
         alwaysShowInformationScreen = getBooleanProperty(properties, "AlwaysShowInformationScreen", false);
+        deepTutorDirectory = properties.getProperty("DeepTutorDirectory", "");
+        deepTutorPartner = properties.getProperty("DeepTutorPartner", "");
         drawShimejiBounds = getBooleanProperty(properties, "DrawShimejiBounds", false);
         String filterText = properties.getProperty("Filter", "false");
         if (filterText.equalsIgnoreCase("true") || filterText.equalsIgnoreCase("hqx")) {
@@ -293,6 +310,27 @@ public class Settings {
             case "stretch" -> backgroundMode = VirtualContentPanel.ResizeMode.STRETCH;
             default -> backgroundMode = VirtualContentPanel.ResizeMode.CENTRE;
         }
+    }
+
+    /**
+     * Reads the backend port from the DeepTutor system settings file.
+     *
+     * @param deepTutorDirectory the root directory of the DeepTutor installation
+     * @return the backend port, or {@code 0} if it could not be read
+     */
+    public static int readBackendPort(Path deepTutorDirectory) {
+        Path settingsFile = deepTutorDirectory.resolve("data/user/settings/system.json");
+        try {
+            for (String line : Files.readAllLines(settingsFile, StandardCharsets.UTF_8)) {
+                Matcher matcher = BACKEND_PORT_PATTERN.matcher(line);
+                if (matcher.find()) {
+                    return Integer.parseInt(matcher.group(1));
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to read DeepTutor system settings from \"{}\"", settingsFile, e);
+        }
+        return 0;
     }
 
     /**
@@ -441,6 +479,8 @@ public class Settings {
         properties.setProperty("ShowTrayIcon", String.valueOf(showTrayIcon));
         properties.setProperty("AlwaysShowShimejiChooser", String.valueOf(alwaysShowShimejiChooser));
         properties.setProperty("AlwaysShowInformationScreen", String.valueOf(alwaysShowInformationScreen));
+        properties.setProperty("DeepTutorDirectory", deepTutorDirectory);
+        properties.setProperty("DeepTutorPartner", deepTutorPartner);
         properties.setProperty("DrawShimejiBounds", String.valueOf(drawShimejiBounds));
         /*
         BUG: Using switch statements in this method seem to sometimes cause NoClassDefFoundError (likely related to the

@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -43,6 +44,8 @@ public class SettingsWindow extends JDialog implements Localizable {
     private boolean showTrayIcon = true;
     private boolean alwaysShowShimejiChooser = false;
     private boolean alwaysShowInformationScreen = false;
+    private String deepTutorDirectory = "";
+    private String deepTutorPartner = "";
     private boolean drawShimejiBounds = false;
     private Filter filter = Filter.NEAREST_NEIGHBOUR;
     private double scaling = 1.0;
@@ -96,6 +99,8 @@ public class SettingsWindow extends JDialog implements Localizable {
         showTrayIcon = settings.showTrayIcon;
         alwaysShowShimejiChooser = settings.alwaysShowShimejiChooser;
         alwaysShowInformationScreen = settings.alwaysShowInformationScreen;
+        deepTutorDirectory = settings.deepTutorDirectory;
+        deepTutorPartner = settings.deepTutorPartner;
         drawShimejiBounds = settings.drawShimejiBounds;
         filter = settings.filter;
         opacity = settings.opacity;
@@ -160,6 +165,9 @@ public class SettingsWindow extends JDialog implements Localizable {
         cmbBackgroundImageMode.setEnabled(windowedMode && backgroundImage != null);
         IntStream.range(0, backgroundModes.length).filter(i -> backgroundMode == backgroundModes[i]).findFirst().ifPresent(i -> cmbBackgroundImageMode.setSelectedIndex(i));
         btnBackgroundImageRemove.setEnabled(windowedMode && backgroundImage != null);
+
+        txtDeepTutorDirectory.setText(deepTutorDirectory);
+        refreshPartnerList();
     }
 
     @Override
@@ -169,6 +177,7 @@ public class SettingsWindow extends JDialog implements Localizable {
         pnlTabs.setTitleAt(1, languageBundle.getString("InteractiveWindows"));
         pnlTabs.setTitleAt(2, languageBundle.getString("WindowMode"));
         pnlTabs.setTitleAt(3, languageBundle.getString("About"));
+        pnlTabs.setTitleAt(4, languageBundle.getString("DeepTutor"));
         lblShimejiEE.setText(languageBundle.getString("ShimejiEE"));
         lblDevelopedBy.setText(languageBundle.getString("DevelopedBy"));
         chkShowTrayIcon.setText(languageBundle.getString("ShowTrayIcon"));
@@ -202,6 +211,10 @@ public class SettingsWindow extends JDialog implements Localizable {
         lblShimejiEE.setText(languageBundle.getString("ShimejiEE"));
         lblDevelopedBy.setText(languageBundle.getString("DevelopedBy"));
         btnWebsite.setText(languageBundle.getString("Website"));
+        lblDeepTutorDirectory.setText(languageBundle.getString("DeepTutorDirectory"));
+        btnBrowseDeepTutor.setText(languageBundle.getString("Browse"));
+        lblPartner.setText(languageBundle.getString("Partner"));
+        btnRefreshPartners.setText(languageBundle.getString("Refresh"));
         btnDone.setText(languageBundle.getString("Done"));
         btnCancel.setText(languageBundle.getString("Cancel"));
     }
@@ -748,6 +761,8 @@ public class SettingsWindow extends JDialog implements Localizable {
 
         pnlTabs.addTab("About", pnlAbout);
 
+        pnlTabs.addTab("DeepTutor", createDeepTutorTab());
+
         pnlFooter.setPreferredSize(new java.awt.Dimension(380, 36));
         pnlFooter.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 10, 5));
 
@@ -820,6 +835,12 @@ public class SettingsWindow extends JDialog implements Localizable {
             settings.backgroundMode = backgroundMode;
             settings.backgroundImage = backgroundImage;
         }
+
+        deepTutorDirectory = txtDeepTutorDirectory.getText().trim();
+        Partner partner = (Partner) cmbPartner.getSelectedItem();
+        deepTutorPartner = partner == null ? "" : partner.id();
+        settings.deepTutorDirectory = deepTutorDirectory;
+        settings.deepTutorPartner = deepTutorPartner;
 
         selectionConfirmed = true;
 
@@ -1062,15 +1083,126 @@ public class SettingsWindow extends JDialog implements Localizable {
         lblBackgroundImage.setPreferredSize(new Dimension(image.getWidth(null), image.getHeight(null)));
     }
 
+    private JPanel createDeepTutorTab() {
+        pnlDeepTutor = new JPanel();
+        pnlDeepTutor.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        pnlDeepTutor.setLayout(new javax.swing.BoxLayout(pnlDeepTutor, javax.swing.BoxLayout.PAGE_AXIS));
+
+        lblDeepTutorDirectory = new JLabel("DeepTutor Directory");
+        lblDeepTutorDirectory.setAlignmentX(Component.LEFT_ALIGNMENT);
+        txtDeepTutorDirectory = new JTextField();
+        btnBrowseDeepTutor = new JButton("Browse");
+        btnBrowseDeepTutor.addActionListener(this::btnBrowseDeepTutorActionPerformed);
+        lblPartner = new JLabel("Partner");
+        lblPartner.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cmbPartner = new JComboBox<>();
+        btnRefreshPartners = new JButton("Refresh");
+        btnRefreshPartners.addActionListener(this::btnRefreshPartnersActionPerformed);
+        lblBackendPort = new JLabel("Backend Port");
+        lblBackendPort.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        pnlDeepTutor.add(lblDeepTutorDirectory);
+        pnlDeepTutor.add(createFieldRow(txtDeepTutorDirectory, btnBrowseDeepTutor));
+        pnlDeepTutor.add(javax.swing.Box.createVerticalStrut(10));
+        pnlDeepTutor.add(lblPartner);
+        pnlDeepTutor.add(createFieldRow(cmbPartner, btnRefreshPartners));
+        pnlDeepTutor.add(javax.swing.Box.createVerticalStrut(10));
+        pnlDeepTutor.add(lblBackendPort);
+        pnlDeepTutor.add(javax.swing.Box.createVerticalGlue());
+
+        return pnlDeepTutor;
+    }
+
+    private static JPanel createFieldRow(JComponent field, JComponent button) {
+        JPanel row = new JPanel(new BorderLayout(4, 0));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        row.add(field, BorderLayout.CENTER);
+        row.add(button, BorderLayout.EAST);
+        return row;
+    }
+
+    private void refreshPartnerList() {
+        deepTutorDirectory = txtDeepTutorDirectory.getText().trim();
+        DefaultComboBoxModel<Partner> model = new DefaultComboBoxModel<>();
+        int port = 0;
+
+        if (!deepTutorDirectory.isEmpty()) {
+            Path deepTutorPath = Path.of(deepTutorDirectory);
+            Path partnersDirectory = deepTutorPath.resolve("data/partners");
+            try (DirectoryStream<Path> partnerDirectories = Files.newDirectoryStream(partnersDirectory)) {
+                for (Path partnerDirectory : partnerDirectories) {
+                    String id = partnerDirectory.getFileName().toString();
+                    if (id.startsWith("partner-")) {
+                        model.addElement(new Partner(id, readPartnerName(partnerDirectory.resolve("config.yaml"), id)));
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Failed to read DeepTutor partners from \"{}\"", partnersDirectory, e);
+            }
+            port = Settings.readBackendPort(deepTutorPath);
+        }
+
+        cmbPartner.setModel(model);
+        for (int index = 0; index < model.getSize(); index++) {
+            if (model.getElementAt(index).id().equals(deepTutorPartner)) {
+                cmbPartner.setSelectedIndex(index);
+                break;
+            }
+        }
+
+        lblBackendPort.setText(Main.getInstance().getLanguageBundle().getString("BackendPort") + ": " + (port == 0 ? "-" : port));
+    }
+
+    private static String readPartnerName(Path configFile, String fallback) {
+        try {
+            for (String line : Files.readAllLines(configFile)) {
+                if (line.startsWith("name:")) {
+                    return line.substring("name:".length()).trim();
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to read partner configuration \"{}\"", configFile, e);
+        }
+        return fallback;
+    }
+
+    private void btnBrowseDeepTutorActionPerformed(ActionEvent evt) {
+        final JFileChooser dialog = new JFileChooser();
+        dialog.setDialogTitle(Main.getInstance().getLanguageBundle().getString("DeepTutorDirectory"));
+        dialog.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+
+        if (dialog.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            txtDeepTutorDirectory.setText(dialog.getSelectedFile().getPath());
+            deepTutorPartner = "";
+            refreshPartnerList();
+        }
+    }
+
+    private void btnRefreshPartnersActionPerformed(ActionEvent evt) {
+        Partner selected = (Partner) cmbPartner.getSelectedItem();
+        deepTutorPartner = selected == null ? "" : selected.id();
+        refreshPartnerList();
+    }
+
+    private record Partner(String id, String name) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAddInteractiveWindow;
     private javax.swing.JButton btnBackgroundColorChange;
     private javax.swing.JButton btnBackgroundImageChange;
     private javax.swing.JButton btnBackgroundImageRemove;
+    private javax.swing.JButton btnBrowseDeepTutor;
     private javax.swing.JButton btnCancel;
     private javax.swing.JButton btnDiscord;
     private javax.swing.JButton btnDone;
     private javax.swing.JButton btnPatreon;
+    private javax.swing.JButton btnRefreshPartners;
     private javax.swing.JButton btnRemoveInteractiveWindow;
     private javax.swing.JButton btnWebsite;
     private javax.swing.JCheckBox chkAlwaysShowInformationScreen;
@@ -1079,6 +1211,7 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JCheckBox chkShowTrayIcon;
     private javax.swing.JCheckBox chkWindowModeEnabled;
     private javax.swing.JComboBox<String> cmbBackgroundImageMode;
+    private javax.swing.JComboBox<Partner> cmbPartner;
     private javax.swing.Box.Filler glue1;
     private javax.swing.Box.Filler glue2;
     private javax.swing.Box.Filler glueBackground;
@@ -1090,6 +1223,8 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JLabel lblBackgroundColor;
     private javax.swing.JLabel lblBackgroundImage;
     private javax.swing.JLabel lblBackgroundImageCaption;
+    private javax.swing.JLabel lblBackendPort;
+    private javax.swing.JLabel lblDeepTutorDirectory;
     private javax.swing.JLabel lblDevelopedBy;
     private javax.swing.JLabel lblDimensions;
     private javax.swing.JLabel lblDimensionsX;
@@ -1097,6 +1232,7 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JLabel lblIcon;
     private javax.swing.JLabel lblKilkakon;
     private javax.swing.JLabel lblOpacity;
+    private javax.swing.JLabel lblPartner;
     private javax.swing.JLabel lblScaling;
     private javax.swing.JLabel lblShimejiEE;
     private javax.swing.JLabel lblVersion;
@@ -1108,6 +1244,7 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JPanel pnlBackgroundPreview;
     private javax.swing.JPanel pnlBackgroundPreviewContainer;
     private javax.swing.JPanel pnlBlacklistTab;
+    private javax.swing.JPanel pnlDeepTutor;
     private javax.swing.JPanel pnlFooter;
     private javax.swing.JPanel pnlGeneral;
     private javax.swing.JPanel pnlInteractiveButtons;
@@ -1128,5 +1265,6 @@ public class SettingsWindow extends JDialog implements Localizable {
     private javax.swing.JSpinner spnWindowHeight;
     private javax.swing.JSpinner spnWindowWidth;
     private javax.swing.JTextField txtBackgroundColor;
+    private javax.swing.JTextField txtDeepTutorDirectory;
     // End of variables declaration//GEN-END:variables
 }
