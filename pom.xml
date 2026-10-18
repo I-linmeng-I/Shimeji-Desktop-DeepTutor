@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project 
+    xmlns="http://maven.apache.org/POM/4.0.0"
+         
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>com.group_finity</groupId>
     <artifactId>mascot</artifactId>
     <version>1.0.22</version>
     <packaging>jar</packaging>
-
     <name>Shimeji-ee</name>
     <description>A desktop mascot that freely wanders and plays around the screen</description>
     <url>https://github.com/DalekCraft2/Shimeji-Desktop</url>
@@ -29,30 +29,24 @@
         <name>Group Finity</name>
         <url>http://www.group-finity.com/</url>
     </organization>
-
     <scm/>
     <issueManagement/>
     <ciManagement/>
     <distributionManagement/>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>25</maven.compiler.release>
         <mainClass>com.group_finity.mascot.Main</mainClass>
-
         <libPrefix>lib</libPrefix>
         <libDirectory>${project.build.directory}/${libPrefix}</libDirectory>
-
         <slf4j.version>2.0.20</slf4j.version>
     </properties>
-
     <repositories>
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
     </repositories>
-
     <dependencies>
         <dependency>
             <!-- Java Native Access Platform -->
@@ -60,21 +54,18 @@
             <artifactId>jna-platform-jpms</artifactId>
             <version>5.19.1</version>
         </dependency>
-
         <dependency>
             <!-- OpenJDK Nashorn -->
             <groupId>org.openjdk.nashorn</groupId>
             <artifactId>nashorn-core</artifactId>
             <version>15.7</version>
         </dependency>
-
         <dependency>
             <!-- OS Detection -->
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-exec</artifactId>
             <version>1.6.0</version>
         </dependency>
-
         <dependency>
             <!-- OS Dark/Light Mode Detection -->
             <groupId>com.github.Dansoftowner</groupId>
@@ -100,7 +91,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
         <dependency>
             <!-- The oshi-core-java25 artifact has been migrated to oshi-core-ffm as of version 7.0.0,
              but jSystemThemeDetector doesn't support oshi-core 7.0.0 yet -->
@@ -109,28 +99,24 @@
             <version>6.11.1</version>
             <scope>runtime</scope>
         </dependency>
-
         <dependency>
             <!-- Swing UI Themes -->
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
             <version>3.7.2</version>
         </dependency>
-
         <dependency>
             <!-- SVG rendering for chat panel icons -->
             <groupId>com.github.weisj</groupId>
             <artifactId>jsvg</artifactId>
             <version>1.6.0</version>
         </dependency>
-
         <dependency>
             <!-- SLF4J API -->
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
-
         <dependency>
             <!-- SLF4J JDK 1.4 Provider -->
             <groupId>org.slf4j</groupId>
@@ -139,7 +125,6 @@
             <scope>runtime</scope>
         </dependency>
     </dependencies>
-
     <build>
         <defaultGoal>clean verify</defaultGoal>
         <finalName>${project.name}</finalName>
@@ -171,32 +156,9 @@
             </plugin>
             <!-- <plugin>
                 &lt;!&ndash; Attach sources &ndash;&gt;
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.4.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><version>3.4.0</version><executions><execution><id>attach-sources</id><goals><goal>jar</goal></goals></execution></executions></plugin><plugin>
                 &lt;!&ndash; Attach Javadocs &ndash;&gt;
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.12.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin> -->
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-javadoc-plugin</artifactId><version>3.12.0</version><executions><execution><id>attach-javadocs</id><goals><goal>jar</goal></goals></execution></executions></plugin> -->
             <plugin>
                 <!-- Set main class -->
                 <groupId>org.apache.maven.plugins</groupId>
